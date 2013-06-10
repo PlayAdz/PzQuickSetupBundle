@@ -11,6 +11,8 @@
 
 namespace Pz\QuickSetupBundle\Generator;
 
+use Doctrine\Common\Inflector\Inflector;
+use Pz\QuickSetupBundle\Util\TypeGuesser;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
@@ -28,6 +30,7 @@ class DoctrineFormGenerator extends Generator
     private $skeletonDir;
     private $className;
     private $classPath;
+
 
     public function __construct(Filesystem $filesystem, $skeletonDir)
     {
@@ -52,7 +55,7 @@ class DoctrineFormGenerator extends Generator
      * @param string            $entity   The entity relative class name
      * @param ClassMetadataInfo $metadata The entity metadata class
      */
-    public function generate(BundleInterface $bundle, $entity, ClassMetadataInfo $metadata)
+    public function generate(BundleInterface $bundle, $entity, $model, ClassMetadataInfo $metadata)
     {
         $parts       = explode('\\', $entity);
         $entityClass = array_pop($parts);
@@ -68,13 +71,12 @@ class DoctrineFormGenerator extends Generator
         if (count($metadata->identifier) > 1) {
             throw new \RuntimeException('The form generator does not support entity classes with multiple primary keys.');
         }
-
         $parts = explode('\\', $entity);
         array_pop($parts);
 
         $this->renderFile($this->skeletonDir, 'FormType.php.twig', $this->classPath, array(
             'dir'              => $this->skeletonDir,
-            'fields'           => $this->getFieldsFromMetadata($metadata),
+            'fields'           => $this->getFieldsFromArray($model),
             'namespace'        => $bundle->getNamespace(),
             'entity_namespace' => implode('\\', $parts),
             'entity_class'     => $entityClass,
@@ -90,21 +92,62 @@ class DoctrineFormGenerator extends Generator
      * @param ClassMetadataInfo $metadata
      * @return array $fields
      */
+    private function getFieldsFromArray($fields)
+    {
+        $result = array();
+
+        foreach($fields as $field => &$map)
+        {
+            $map['fieldName'] = $field;
+            $map['fieldNameCamelized'] = Inflector::camelize($field);
+            $map['type'] = TypeGuesser::getFormType($map['type']);
+            $result[] = $map;
+        }
+        //print_r($result);die();
+        return $result;
+    }
+
+
+    /**
+     * Returns an array of fields. Fields can be both column fields and
+     * association fields.
+     *
+     * @param ClassMetadataInfo $metadata
+     * @return array $fields
+     */
     private function getFieldsFromMetadata(ClassMetadataInfo $metadata)
     {
-        $fields = (array) $metadata->fieldNames;
+        $fields = (array) $metadata->fieldMappings;
 
-        // Remove the primary key field if it's not managed manually
-        if (!$metadata->isIdentifierNatural()) {
-            $fields = array_diff($fields, $metadata->identifier);
+        foreach($fields as $field => &$map)
+        {
+            $map['type'] = $this->mapType($map['type']);
         }
+        // Remove the primary key field if it's not managed manually
+        //if (!$metadata->isIdentifierNatural()) {
+        //    $fields = array_diff($fields, $metadata->identifier);
+        //}
 
         foreach ($metadata->associationMappings as $fieldName => $relation) {
             if ($relation['type'] !== ClassMetadataInfo::ONE_TO_MANY) {
-                $fields[] = $fieldName;
+                $fields[] = $metadata->getFieldMapping($fieldName);
             }
         }
 
         return $fields;
     }
+
+    /**
+     * Map doctrine type with Built-in Field Types
+     *
+     * @param $type
+     * @return string
+     */
+    protected function mapType($type)
+    {
+        if (preg_match('/string/', $type)) $type = 'text';
+
+        return $type;
+    }
+
 }

@@ -1,0 +1,80 @@
+<?php
+
+namespace {{ namespace }}\Entity;
+
+{% if 'annotation' == format %}
+use Doctrine\ORM\Mapping as ORM;
+use Gedmo\Mapping\Annotation as Gedmo;
+{% endif %}
+
+/**
+ * {{ entity_class }}
+ *
+{% if 'annotation' == format %}
+ * @ORM\Table(name="{{ table }}")
+ * @ORM\Entity
+{% endif %}
+ */
+class {{ entity_class }}
+{
+
+    public function __construct()
+    {
+    }
+
+    /**
+    * @var integer
+    *
+{% if 'annotation' == format %}
+    * @ORM\Column(name="id", type="integer")
+    * @ORM\Id
+    * @ORM\GeneratedValue(strategy="AUTO")
+{% endif %}
+    */
+    private $id;
+
+
+    {% for field in fields if field.fieldName != 'id' %}
+
+    /**
+    * @var {{ field.type }}
+    *
+{% if field.comment is defined %}
+    * {{ field.comment }}
+{% endif %}
+{% if 'annotation' == format %}
+    * @ORM\Column(name="{{ field.fieldName }}", type="{{ field.type }}" {% if field.length is  defined %} , length={{ field.length }}{% endif %} )
+{% endif %}
+    */
+    private ${{ field.fieldName }};
+
+    {% endfor %}
+
+    {% for field in fields %}
+
+    /**
+     * Set {{ field.fieldName }}
+     *
+     * @param {{ field.type }} ${{ field.fieldName }}
+     * @return {{ entity_class }}
+     */
+    public function set{{ field.fieldNameCamelized }}(${{ field.fieldName }})
+    {
+        $this->{{ field.fieldName }} = ${{ field.fieldName }};
+
+        return $this;
+    }
+
+    /**
+     * Get {{ field.fieldName }}
+     *
+     * @return {{ field.type }}
+     */
+    public function get{{ field.fieldNameCamelized }}()
+    {
+        return $this->{{ field.fieldName }};
+    }
+
+    {% endfor %}
+
+}

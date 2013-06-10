@@ -1,0 +1,51 @@
+
+bundles:
+
+    MyNamespace1\SamplePostBundle:
+        config:
+            format: annotation
+        routing:
+            config:
+                route_format: annotation
+                template_format: twig
+            controllers:
+                HomeController:
+                    actions:
+                        index:      { route: '/home'   }
+                        about:      { route: '/about' }
+                        contact:    { route: '/contact', template: contact }
+        models:
+            #
+            Post:
+              config:
+                  format:          annotation
+                  with-repository: true
+                  with-form:       true
+                  with-crud:
+                      format: annotation
+                      actions: [index, show, new, edit, delete]
+              fields:
+                  name:                   { type: string(60), notnull: true,  comment: "comment1" }
+                  textarea_col:               { type: textarea  }
+                  datetime_col:               { type: datetime }
+                  date_col:                   { type: date }
+                  time_col:                   { type: time }
+                  url_col:                    { type: url }
+                  email_col:                  { type: email }
+                  country_col:                { type: country }
+                  number_col:                 { type: number }
+                  float_col:                  { type: float }
+                  checkbox_col:               { type: checkbox }
+                  file_col:                   { type: file }
+                  language_col:               { type: language }
+
+            Shop:
+              config:
+                  with-repository: true
+                  format: annotation
+              fields:
+                  name:                   { type: string(60), notnull: true }
+                  description:            { type: text  }
+                  url:                    { type: url }
+              indexes:
+                  name:                 { fields: [name] }

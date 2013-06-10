@@ -1,6 +1,8 @@
 <?php
 namespace Pz\QuickSetupBundle\Generator;
 
+use Doctrine\Common\Inflector\Inflector;
+use Pz\QuickSetupBundle\Util\TypeGuesser;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Bridge\Doctrine\RegistryInterface;
@@ -24,11 +26,20 @@ class DoctrineEntityGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\D
 
     public function __construct(Filesystem $filesystem, RegistryInterface $registry)
     {
-        $this->filesystem = $filesystem;
-        $this->registry = $registry;
+        $this->filesystem   = $filesystem;
+        $this->registry     = $registry;
+        $this->skeletonDir  = __DIR__.'/../Resources/skeleton/entity';
     }
 
-    public function generate(BundleInterface $bundle, $entity, $format, array $fields, $withRepository)
+    /**
+     * @param BundleInterface $bundle
+     * @param $entity
+     * @param $format
+     * @param array $fields
+     * @param $withRepository
+     * @throws \RuntimeException
+     */
+    public function generate(BundleInterface $bundle, $entity, $format, array $model, $withRepository)
     {
         // configure the bundle (needed if the bundle does not contain any Entities yet)
         $config = $this->registry->getEntityManager(null)->getConfiguration();
@@ -42,22 +53,21 @@ class DoctrineEntityGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\D
         if (file_exists($entityPath)) {
             throw new \RuntimeException(sprintf('Entity "%s" already exists.', $entityClass));
         }
-       $class = new ClassMetadataInfo($entityClass);
-        if ($withRepository) {
-            $class->customRepositoryClassName = $entityClass.'Repository';
-        }
-        $class->mapField(array('fieldName' => 'id', 'type' => 'integer', 'id' => true));
-        $class->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_AUTO);
-        foreach ($fields as $field) {
-            $class->mapField($field);
-        }
+        // create meta data class
+        $class = $this->getEntityClassMetadata($entity, $model, $withRepository);
 
-        $entityGenerator = $this->getEntityGenerator();
-        if ('annotation' === $format) {
-            $entityGenerator->setGenerateAnnotations(true);
-            $entityCode = $entityGenerator->generateEntityClass($class);
-            $mappingPath = $mappingCode = false;
-        } else {
+        // generate PHP entity file
+        $this->renderFile($this->skeletonDir, 'Entity.php.twig', sprintf('%s/Entity/%s.php', $bundle->getPath(), $entity), array(
+            'namespace'        => $bundle->getNamespace(),
+            'fields'           => $this->getFieldsFromMetadata($class),
+            'entity_class'     => $entity,
+            'table'            => Inflector::tableize($entity),
+            'format'           => $format,
+        ));
+
+        // generate PHP or YML or XML File, if needed
+        if ('annotation' !== $format)
+        {
             $cme = new ClassMetadataExporter();
             $exporter = $cme->getExporter('yml' == $format ? 'yaml' : $format);
             $mappingPath = $bundle->getPath().'/Resources/config/doctrine/'.str_replace('\\', '.', $entity).'.orm.'.$format;
@@ -67,22 +77,103 @@ class DoctrineEntityGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\D
             }
 
             $mappingCode = $exporter->exportClassMetadata($class);
+            if ($mappingPath) {
+                $this->filesystem->mkdir(dirname($mappingPath));
+                file_put_contents($mappingPath, $mappingCode);
+            }
+            // generate entity
+            $entityGenerator = $this->getEntityGenerator();
             $entityGenerator->setGenerateAnnotations(false);
             $entityCode = $entityGenerator->generateEntityClass($class);
+
+            $this->filesystem->mkdir(dirname($entityPath));
+            file_put_contents($entityPath, $entityCode);
         }
 
-        $this->filesystem->mkdir(dirname($entityPath));
-        file_put_contents($entityPath, $entityCode);
-
-        if ($mappingPath) {
-            $this->filesystem->mkdir(dirname($mappingPath));
-            file_put_contents($mappingPath, $mappingCode);
-        }
 
         if ($withRepository) {
-            $path = $bundle->getPath().'/../..';
+//            $path = $bundle->getPath().'/../..';
+//            $path = $bundle->getPath().str_repeat('/..', substr_count(get_class($bundle), '\\'));
+//            $this->getRepositoryGenerator()->writeEntityRepositoryClass($class->customRepositoryClassName, $path);
 
-            $this->getRepositoryGenerator()->writeEntityRepositoryClass($class->customRepositoryClassName, $path);
+            $this->renderFile($this->skeletonDir, 'Repository.php.twig', sprintf('%s/Entity/%sRepository.php', $bundle->getPath(), $entity), array(
+                'namespace'        => $bundle->getNamespace(),
+                'entity_class'     => $entity,
+            ));
+
         }
     }
+
+
+    /**
+     * @param $entity
+     * @param $model
+     * @param $withRepository
+     * @return mixed
+     */
+    public function getEntityClassMetadata($entityClass, $model, $withRepository)
+    {
+        $class = new ClassMetadataInfo($entityClass);
+        if ($withRepository) {
+            $class->customRepositoryClassName = $entityClass.'Repository';
+        }
+        $class->mapField(array('fieldName' => 'id', 'type' => 'integer', 'id' => true));
+        $class->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_AUTO);
+
+        foreach ($model['fields'] as $name => &$field)
+        {
+            $field['fieldName'] = $name;
+            $field = array_merge($field, TypeGuesser::getEntityType($field['type']));
+            $class->mapField($field);
+        }
+        return $class;
+    }
+
+
+    /**
+     * Returns an array of fields. Fields can be both column fields and
+     * association fields.
+     *
+     * @param ClassMetadataInfo $metadata
+     * @return array $fields
+     */
+    private function getFieldsFromMetadata(ClassMetadataInfo $metadata)
+    {
+        $fields = (array) $metadata->fieldMappings;
+
+        // Remove the primary key field if it's not managed manually
+        //if (!$metadata->isIdentifierNatural()) {
+        //    $fields = array_diff($fields, $metadata->identifier);
+        //}
+
+        foreach ($metadata->associationMappings as $fieldName => $relation) {
+            if ($relation['type'] !== ClassMetadataInfo::ONE_TO_MANY) {
+                $fields[] = $metadata->getFieldMapping($fieldName);
+            }
+        }
+
+        foreach($fields as &$field)
+        {
+            $field['fieldNameCamelized'] = Inflector::camelize($field['fieldName']);
+        }
+        //print_r($fields);die();
+        return $fields;
+    }
+
+    /**
+     * @return EntityGenerator
+     */
+    protected function getEntityGenerator()
+    {
+        $entityGenerator = new EntityGenerator();
+        $entityGenerator->setGenerateAnnotations(false);
+        $entityGenerator->setGenerateStubMethods(true);
+        $entityGenerator->setRegenerateEntityIfExists(false);
+        $entityGenerator->setUpdateEntityIfExists(true);
+        $entityGenerator->setNumSpaces(4);
+        $entityGenerator->setAnnotationPrefix('ORM\\');
+
+        return $entityGenerator;
+    }
+
 }

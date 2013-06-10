@@ -103,6 +103,12 @@ class BundleInfo implements BundleInterface
         return $this->name;
     }
 
+    public function getFullName()
+    {
+        return $this->getNamespace() .'\\' .$this->getName();
+    }
+
+
     /**
      * @return mixed
      */
