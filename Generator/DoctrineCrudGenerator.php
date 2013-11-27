@@ -1,6 +1,6 @@
 <?php
 
-namespace Pz\QuickSetupBundle\Generator;
+namespace Playadz\Bundle\QuickSetupBundle\Generator;
 
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;

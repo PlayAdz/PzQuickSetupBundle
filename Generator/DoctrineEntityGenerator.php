@@ -1,8 +1,8 @@
 <?php
-namespace Pz\QuickSetupBundle\Generator;
+namespace Playadz\Bundle\QuickSetupBundle\Generator;
 
 use Doctrine\Common\Inflector\Inflector;
-use Pz\QuickSetupBundle\Util\TypeGuesser;
+use Playadz\QuickSetupBundle\Util\TypeGuesser;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Bridge\Doctrine\RegistryInterface;
@@ -56,10 +56,14 @@ class DoctrineEntityGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\D
         // create meta data class
         $class = $this->getEntityClassMetadata($entity, $model, $withRepository);
 
+        $this->setSkeletonDirs($this->skeletonDir);
+
         // generate PHP entity file
-        $this->renderFile($this->skeletonDir, 'Entity.php.twig', sprintf('%s/Entity/%s.php', $bundle->getPath(), $entity), array(
+        $this->renderFile('Entity.php.twig', sprintf('%s/Entity/%s.php', $bundle->getPath(), $entity), array(
             'namespace'        => $bundle->getNamespace(),
             'fields'           => $this->getFieldsFromMetadata($class),
+            'relations'        => $this->getFieldsFromMetadata($class),
+            'indexes'          => (isset($model['indexes'])) ? $this->getAnnotationIndexes($model['indexes']) : '',
             'entity_class'     => $entity,
             'table'            => Inflector::tableize($entity),
             'format'           => $format,
@@ -90,13 +94,12 @@ class DoctrineEntityGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\D
             file_put_contents($entityPath, $entityCode);
         }
 
-
         if ($withRepository) {
 //            $path = $bundle->getPath().'/../..';
 //            $path = $bundle->getPath().str_repeat('/..', substr_count(get_class($bundle), '\\'));
 //            $this->getRepositoryGenerator()->writeEntityRepositoryClass($class->customRepositoryClassName, $path);
 
-            $this->renderFile($this->skeletonDir, 'Repository.php.twig', sprintf('%s/Entity/%sRepository.php', $bundle->getPath(), $entity), array(
+            $this->renderFile('Repository.php.twig', sprintf('%s/Entity/%sRepository.php', $bundle->getPath(), $entity), array(
                 'namespace'        => $bundle->getNamespace(),
                 'entity_class'     => $entity,
             ));
@@ -105,6 +108,20 @@ class DoctrineEntityGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\D
     }
 
 
+    /**
+     * @param $array
+     * @return mixed
+     */
+    public function getAnnotationIndexes($array)
+    {
+       $indexes = array();
+       foreach($array as $index_name => $config)
+       {
+           // TODO use $config
+            $indexes[] = sprintf('@ORM\Index(name="%s_idx", columns={"%s"})', $index_name, $index_name);
+       }
+       return implode(",/n", $indexes);
+    }
     /**
      * @param $entity
      * @param $model
@@ -155,6 +172,7 @@ class DoctrineEntityGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\D
         foreach($fields as &$field)
         {
             $field['fieldNameCamelized'] = Inflector::camelize($field['fieldName']);
+           // $field['actAs'] = array('@Gedmo\Timestampable()');
         }
         //print_r($fields);die();
         return $fields;

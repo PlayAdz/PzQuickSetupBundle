@@ -1,7 +1,9 @@
 <?php
 
-namespace Pz\QuickSetupBundle\Command;
-use Pz\QuickSetupBundle\Util\TypeGuesser;
+namespace Playadz\Bundle\QuickSetupBundle\Command;
+
+use Doctrine\ORM\Mapping\ClassMetadataInfo;
+use Playadz\QuickSetupBundle\Util\TypeGuesser;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
@@ -16,7 +18,7 @@ use \Doctrine\ORM\Mapping\ClassMetadata;
 use Sensio\Bundle\GeneratorBundle\Manipulator\KernelManipulator;
 use Sensio\Bundle\GeneratorBundle\Manipulator\RoutingManipulator;
 
-use Pz\QuickSetupBundle\Bundle\BundleInfo;
+use Playadz\QuickSetupBundle\Bundle\BundleInfo;
 
 function pr($obj)
 {
@@ -89,7 +91,7 @@ class SetupProjectCommand extends ContainerAwareCommand
         $this->root_dir = $this->getContainer()->get('kernel')->getRootdir();
         $this->kernel   = $this->getContainer()->get('kernel');
         $this->filesystem   = $this->getContainer()->get('filesystem');
-        $this->filesystem->remove($this->root_dir . '/../src/MyNamespace1');
+        $this->filesystem->remove($this->root_dir . '/../src/Pz');
         $this->filesystem->remove($this->root_dir . '/../src/MyNamespace2');
     }
 
@@ -151,7 +153,7 @@ class SetupProjectCommand extends ContainerAwareCommand
                 {
                     foreach($bundle_config["models"] as $model_name => $model_config)
                     {
-                        $args = $model_config['config'];
+                        $args = array_merge(self::$DEFAULT_ARGS_GENERATE_ENTITY, $model_config['config']);
                         $full_model_name =  sprintf("%s:%s", $bundle->getName(), $model_name);
 
                         if (!isset($model_config['fields'])) throw new Exception('could not create entity without fields');
@@ -179,7 +181,7 @@ class SetupProjectCommand extends ContainerAwareCommand
                     }
                 }
 
-                if (isset($bundle_config["routing"]))
+                if (isset($bundle_config["routing"]['controllers']))
                 {
                     $global_config = $bundle_config["routing"]['config'];
 
@@ -324,13 +326,15 @@ class SetupProjectCommand extends ContainerAwareCommand
             $name = strtr($namespace, array('\\' => ''));
             $name = \Sensio\Bundle\GeneratorBundle\Command\Validators::validateBundleName($name);
         }
-        if (!isset($this->generator_bundle)) {
-            $this->generator_bundle = new \Sensio\Bundle\GeneratorBundle\Generator\BundleGenerator($this->filesystem, __DIR__.'/../Resources/skeleton/bundle');
-        }
-        $this->generator_bundle->generate($namespace, $name, $dir, $format, $structure);
 
+        if (!isset($this->generator_bundle)) {
+            $this->generator_bundle = new \Sensio\Bundle\GeneratorBundle\Generator\BundleGenerator($this->filesystem);
+            $this->generator_bundle->setSkeletonDirs(__DIR__.'/../Resources/skeleton');
+        }
         $verbose_info = ($this->verbose) ? sprintf('-> %-50s %-10s %-10s %-3s', $namespace, $dir, $format, $structure) : '';
         $this->output->writeln(sprintf($this->log_pattern_ok, 'generate bundle', $name, $verbose_info));
+
+        $this->generator_bundle->generate($namespace, $name, $dir, $format, $structure);
 
         $dir .= '/'.strtr($namespace, '\\', '/');
         $bundle_info = new BundleInfo();
@@ -350,7 +354,7 @@ class SetupProjectCommand extends ContainerAwareCommand
     protected function generateEntity($bundle, $entity, $model, $format, $with_repository)
     {
         if (!isset($this->generator_entity)) {
-            $this->generator_entity = new \Pz\QuickSetupBundle\Generator\DoctrineEntityGenerator($this->filesystem, $this->getContainer()->get('doctrine'));
+            $this->generator_entity = new \Playadz\QuickSetupBundle\Generator\DoctrineEntityGenerator($this->filesystem, $this->getContainer()->get('doctrine'));
         }
 
         $this->generator_entity->generate($bundle, $entity, $format, $model, $with_repository);
@@ -369,7 +373,8 @@ class SetupProjectCommand extends ContainerAwareCommand
     protected function generateForm(BundleInterface $bundle, $entity, $fields, ClassMetadata $metadata)
     {
         if (!isset($this->generator_form)) {
-            $this->generator_form = new \Pz\QuickSetupBundle\Generator\DoctrineFormGenerator($this->filesystem, __DIR__.'/../Resources/skeleton/form');
+            $this->generator_form = new \Playadz\QuickSetupBundle\Generator\DoctrineFormGenerator($this->filesystem);
+            $this->generator_form->setSkeletonDirs(__DIR__.'/../Resources/skeleton/form');
         }
 
         try{
@@ -393,7 +398,8 @@ class SetupProjectCommand extends ContainerAwareCommand
     protected function generateCrud(BundleInterface $bundle, $entity, ClassMetadata $metadata, $format, $actions, $routePrefix, $forceOverwrite)
     {
         if (!isset($this->generator_crud)) {
-            $this->generator_crud = new \Pz\QuickSetupBundle\Generator\DoctrineCrudGenerator($this->filesystem, __DIR__.'/../Resources/skeleton/crud');
+            $this->generator_crud = new \Playadz\QuickSetupBundle\Generator\DoctrineCrudGenerator($this->filesystem);
+            $this->generator_crud->setSkeletonDirs(__DIR__.'/../Resources/skeleton');
         }
         try{
             $this->generator_crud->setActions($actions);
@@ -417,12 +423,13 @@ class SetupProjectCommand extends ContainerAwareCommand
     protected function generateController($bundle, $controller, $route_format, $template_format, $actions)
     {
         if (!isset($this->generator_controller)) {
-            $this->generator_controller = new \Sensio\Bundle\GeneratorBundle\Generator\ControllerGenerator($this->filesystem, __DIR__.'/../Resources/skeleton/controller');
+            $this->generator_controller = new \Sensio\Bundle\GeneratorBundle\Generator\ControllerGenerator($this->filesystem);
+            $this->generator_controller->setSkeletonDirs(__DIR__.'/../Resources/skeleton');
         }
-
-        $this->generator_controller->generate($bundle, $controller, $route_format, $template_format, $actions);
         $verbose_info = ($this->verbose) ? sprintf('-> %-50s %-10s %-3s', sizeof($actions) . ' action(s)', $template_format, $route_format ) : '';
         $this->output->writeln(sprintf($this->log_pattern_ok, 'generate controller', $bundle->getName() . ':' .$controller, $verbose_info));
+
+        $this->generator_controller->generate($bundle, $controller, $route_format, $template_format, $actions);
     }
 
 

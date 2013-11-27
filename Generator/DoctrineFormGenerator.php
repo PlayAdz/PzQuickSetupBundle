@@ -9,10 +9,10 @@
  * file that was distributed with this source code.
  */
 
-namespace Pz\QuickSetupBundle\Generator;
+namespace Playadz\Bundle\QuickSetupBundle\Generator;
 
 use Doctrine\Common\Inflector\Inflector;
-use Pz\QuickSetupBundle\Util\TypeGuesser;
+use Playadz\QuickSetupBundle\Util\TypeGuesser;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
@@ -21,21 +21,25 @@ use Sensio\Bundle\GeneratorBundle\Generator\Generator;
 /**
  * Generates a form class based on a Doctrine entity.
  *
- * @author Fabien Potencier <fabien@symfony.com>
- * @author Hugo Hamon <hugo.hamon@sensio.com>
+ * Note: the whole DoctrineFormGenerator class is copied because we cannot override getFieldsFromMetadata() (private method).
+ *
+ * @author Sven Gaubert
+ *
  */
 class DoctrineFormGenerator extends Generator
 {
     private $filesystem;
-    private $skeletonDir;
     private $className;
     private $classPath;
 
-
-    public function __construct(Filesystem $filesystem, $skeletonDir)
+    /**
+     * Constructor.
+     *
+     * @param Filesystem $filesystem A Filesystem instance
+     */
+    public function __construct(Filesystem $filesystem)
     {
         $this->filesystem = $filesystem;
-        $this->skeletonDir = $skeletonDir;
     }
 
     public function getClassName()
@@ -55,7 +59,7 @@ class DoctrineFormGenerator extends Generator
      * @param string            $entity   The entity relative class name
      * @param ClassMetadataInfo $metadata The entity metadata class
      */
-    public function generate(BundleInterface $bundle, $entity, $model, ClassMetadataInfo $metadata)
+    public function generate(BundleInterface $bundle, $entity, ClassMetadataInfo $metadata)
     {
         $parts       = explode('\\', $entity);
         $entityClass = array_pop($parts);
@@ -71,40 +75,19 @@ class DoctrineFormGenerator extends Generator
         if (count($metadata->identifier) > 1) {
             throw new \RuntimeException('The form generator does not support entity classes with multiple primary keys.');
         }
+
         $parts = explode('\\', $entity);
         array_pop($parts);
 
-        $this->renderFile($this->skeletonDir, 'FormType.php.twig', $this->classPath, array(
-            'dir'              => $this->skeletonDir,
-            'fields'           => $this->getFieldsFromArray($model),
+        $this->renderFile( 'form/FormType.php.twig', $this->classPath, array(
+            'fields'           => $this->getFieldsFromMetadata($metadata),
             'namespace'        => $bundle->getNamespace(),
             'entity_namespace' => implode('\\', $parts),
             'entity_class'     => $entityClass,
+            'bundle'           => $bundle->getName(),
             'form_class'       => $this->className,
-            'form_type_name'   => strtolower(str_replace('\\', '_', $bundle->getNamespace()).($parts ? '_' : '').implode('_', $parts).'_'.$this->className),
+            'form_type_name'   => strtolower(str_replace('\\', '_', $bundle->getNamespace()).($parts ? '_' : '').implode('_', $parts).'_'.substr($this->className, 0, -4)),
         ));
-    }
-
-    /**
-     * Returns an array of fields. Fields can be both column fields and
-     * association fields.
-     *
-     * @param ClassMetadataInfo $metadata
-     * @return array $fields
-     */
-    private function getFieldsFromArray($fields)
-    {
-        $result = array();
-
-        foreach($fields as $field => &$map)
-        {
-            $map['fieldName'] = $field;
-            $map['fieldNameCamelized'] = Inflector::camelize($field);
-            $map['type'] = TypeGuesser::getFormType($map['type']);
-            $result[] = $map;
-        }
-        //print_r($result);die();
-        return $result;
     }
 
 
@@ -133,7 +116,7 @@ class DoctrineFormGenerator extends Generator
                 $fields[] = $metadata->getFieldMapping($fieldName);
             }
         }
-
+        //pr($fields);
         return $fields;
     }
 

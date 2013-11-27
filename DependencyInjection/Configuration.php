@@ -1,6 +1,6 @@
 <?php
 
-namespace Pz\QuickSetupBundle\DependencyInjection;
+namespace Playadz\Bundle\QuickSetupBundle\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;

@@ -7,7 +7,7 @@
  * To change this template use File | Settings | File Templates.
  */
 
-namespace Pz\QuickSetupBundle\Util;
+namespace Playadz\Bundle\QuickSetupBundle\Util;
 
 
 

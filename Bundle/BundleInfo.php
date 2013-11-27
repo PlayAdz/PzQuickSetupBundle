@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Pz\QuickSetupBundle\Bundle;
+namespace Playadz\Bundle\QuickSetupBundle\Bundle;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
