@@ -22,7 +22,7 @@
         "symfony/framework-bundle":  ">=2.0.0"
     },
     "autoload": {
-        "psr-0": { "PlayAdz\\Bundle\\QuickSetupBundle": "" }
+        "psr-0": { "Playadz\\Bundle\\QuickSetupBundle": "" }
     },
-    "target-dir": "PlayAdz/Bundle/QuickSetupBundle"
+    "target-dir": "Playadz/Bundle/QuickSetupBundle"
 }
