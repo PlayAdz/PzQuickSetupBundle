@@ -63,6 +63,7 @@ EOT
         list($bundle, $entity) = $this->parseShortcutNotation($entity);
 
         $entityClass = $this->getContainer()->get('doctrine')->getAliasNamespace($bundle).'\\'.$entity;
+
         $metadata = $this->getEntityMetadata($entityClass);
         $bundle   = $this->getApplication()->getKernel()->getBundle($bundle);
 
@@ -88,4 +89,6 @@ EOT
     {
         return new DoctrineFormGenerator($this->getContainer()->get('filesystem'));
     }
+
+
 }
