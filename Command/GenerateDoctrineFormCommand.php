@@ -18,8 +18,7 @@ use Playadz\Bundle\QuickSetupBundle\Generator\DoctrineFormGenerator;
 /**
  * Generates a form type class for a given Doctrine entity.
  *
- * @author Fabien Potencier <fabien@symfony.com>
- * @author Hugo Hamon <hugo.hamon@sensio.com>
+ * @author Sven Gaubert
  */
 class GenerateDoctrineFormCommand extends BaseGenerateDoctrineCommand
 {
