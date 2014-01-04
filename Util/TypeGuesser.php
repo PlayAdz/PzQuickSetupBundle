@@ -1,16 +1,13 @@
 <?php
-/**
- * Created by JetBrains PhpStorm.
- * User: sven
- * Date: 6/3/13
- * Time: 6:47 PM
- * To change this template use File | Settings | File Templates.
- */
 
 namespace Playadz\Bundle\QuickSetupBundle\Util;
 
 
-
+/**
+ * Class TypeGuesser
+ *
+ * @package Playadz\Bundle\QuickSetupBundle\Util
+ */
 class TypeGuesser
 {
 

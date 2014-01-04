@@ -48,7 +48,6 @@ in order to know the file structure of the skeleton
 EOT
             )
             ->setName('pz:generate:form')
-            ->setAliases(array('pz:doctrine:form'))
         ;
     }
 

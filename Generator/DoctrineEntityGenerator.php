@@ -140,7 +140,7 @@ class DoctrineEntityGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\D
         foreach ($model['fields'] as $name => &$field)
         {
             $field['fieldName'] = $name;
-            $field = array_merge($field, TypeGuesser::getEntityType($field['type']));
+            $field = array_merge($field, TypeGuesser::getFormType($field['type']));
             $class->mapField($field);
     }
 return $class;
